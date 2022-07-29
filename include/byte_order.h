@@ -29,10 +29,10 @@
 
 #ifdef __BYTE_ORDER__
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define htons(x) htobe16(x)
-#define ntohs(x) be16toh(x)
+#define htons(x) (((x) >> 8) | ((x) << 8))
+#define ntohs(x) (((x) >> 8) | ((x) << 8))
 #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define htons(x) x
-#define ntohs(x) x
+#define htons(x) (x)
+#define ntohs(x) (x)
 #endif
 #endif

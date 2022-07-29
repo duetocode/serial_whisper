@@ -66,6 +66,14 @@ void test_send(void)
     checksum = update_crc(WHISPER_MESSAGE_TYPE__STATE_UPDATE, checksum);
     checksum = update_crc_buf(msg.payload, sizeof(msg.payload), checksum);
 
+    const uint16_t sample = 0x0001;
+    if (*(uint8_t *)&sample == 0x01)
+    {
+        // we are little endian, so we need to swap the bytes as the expected checksum should be big endian
+        checksum = ((checksum & 0x00FF) << 8) | ((checksum & 0xFF00) >> 8);
+    }
+
+
     _mock_buf_send.size = 0;
     motoilet_whisper_message__send(&msg);
 

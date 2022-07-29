@@ -24,6 +24,7 @@
 #include <string.h>
 #include "motoilet_whisper_data_layer.h"
 #include "motoilet_whisper_driver.h"
+#include "byte_order.h"
 
 #include "crc.h"
 
@@ -111,6 +112,7 @@ void _send(void)
     len += LEN_PAYLOAD;
 
     // checksum
+    checksum = htons(checksum);
     _write((unsigned char *)&checksum, LEN_CHECKSUM, checksum);
     len += LEN_CHECKSUM;
 
@@ -235,13 +237,14 @@ unsigned char _on_checksum(const unsigned char *buf, unsigned char len)
     if (_buf_recv.num_matched == 0)
     {
         // the first byte of the checksum
-        checksum = buf[0] & 0xFF;
+        checksum = buf[0] << 8;
         ++_buf_recv.num_matched;
     }
     else
     {
         // the second byte
-        checksum |= (buf[0] & 0xFF) << 8;
+        checksum |= buf[0] & 0xFF;
+        checksum = ntohs(checksum);
 
         // transite to prefix state
         _buf_recv.num_matched = 0;
