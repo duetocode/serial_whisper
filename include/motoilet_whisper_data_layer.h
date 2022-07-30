@@ -23,18 +23,14 @@
 #ifndef MOTOILET_WHISPER_DATA_LAYER_H
 #define MOTOILET_WHISPER_DATA_LAYER_H
 
-struct whisper_message
-{
-    unsigned char type;
-    const unsigned char *payload;
-};
+#include "motoilet_whisper_message.h"
 
 /**
  * @brief Initialize the data layer of the whisper protocol.
  *
  * @return unsigned char 0 if successful, 1 otherwise.
  */
-unsigned char motoilet_whisper_message__data_init(void);
+unsigned char motoilet_whisper_data__init(void);
 
 /**
  * @brief send out a whisper message.
@@ -42,7 +38,7 @@ unsigned char motoilet_whisper_message__data_init(void);
  * @param message the message to send.
  * @return unsigned char 0 if successful, 1 if the previous message is still under processing.
  */
-unsigned char motoilet_whisper_message__send(struct whisper_message *message);
+unsigned char motoilet_whisper_data__send(const struct whisper_message *message);
 
 /**
  * @brief delivery report for the sent message
@@ -54,11 +50,11 @@ void motoilet_whisper_message__delivery_cb(unsigned char delivered);
 #define MOTOILET_WHISPER_MESSAGE_DELIVERY_FAILED 1
 
 /**
- * @brief callback for message received from the other end
+ * @brief callback for message received from the other end, should be implemented by the upper layer
  *
  * @param message the message received.
  */
-void motoilet_whisper_message__received_cb(struct whisper_message *message);
+void motoilet_whisper_data__received_cb(const struct whisper_message *message);
 
 
 

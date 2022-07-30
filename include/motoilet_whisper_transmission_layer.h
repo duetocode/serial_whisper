@@ -20,17 +20,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */ 
-#ifndef DATA_LAYER_H
-#define DATA_LAYER_H
+#ifndef MOTOILET_WHISPER_TRANSMISSION_LAYER_H
+#define MOTOILET_WHISPER_TRANSMISSION_LAYER_H
 
-#include "motoilet_whisper_data_layer.h"
+#include "motoilet_whisper_message.h"
 
-const static unsigned char WHISPER_MESSAGE_PREFIX[] = {0xA5};
+unsigned char motoilet_whisper_transmission__init(void);
 
+/**
+ * @brief send out a whisper message.
+ *
+ * @param message the message to send.
+ * @return unsigned char 0 if successful, 1 if the previous message is still under processing.
+ */
+unsigned char motoilet_whisper_transmission__send(const struct whisper_message *message);
+
+/**
+ * @brief delivery report for the sent message
+ *
+ * @param delivered 0 if the message was successfully delivered, 1 otherwise.
+ */
+void motoilet_whisper_transmission__delivery_cb(unsigned char delivered);
+
+/**
+ * @brief callback for message received from the other end
+ *
+ * @param message the message received.
+ */
+void motoilet_whisper_transmission__received_cb(const struct whisper_message *message);
 
 #define WHISPER_MESSAGE_TYPE__ACK 0x00
-
 #define WHISPER_MESSAGE_RETRANSMISSION_DELAY_MS 50
 
-
-#endif // DATA_LAYER_H
+#endif // MOTOILET_WHISPER_TRANSMISSION_LAYER_H

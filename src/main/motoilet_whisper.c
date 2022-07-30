@@ -20,49 +20,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */ 
-#ifndef DATA_LAYER_DRIVER_MOCK_H
-#define DATA_LAYER_DRIVER_MOCK_H
+#include "motoilet_whisper.h"
 
-#include "motoilet_whisper_driver.h"
 #include "motoilet_whisper_data_layer.h"
+#include "motoilet_whisper_transmission_layer.h"
 
-#include <assert.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
 
-#define BUF_SIZE 10240
-
-typedef struct 
+unsigned char motoilet_whisper__init(void)
 {
-    size_t size;
-    uint8_t buf[BUF_SIZE]; 
-} data_buf_t;
+    motoilet_whisper_data__init();
+    motoilet_whisper_transmission__init();
 
-typedef struct
-{
-    size_t size;
-    uint16_t buf[BUF_SIZE];
-} set_delay_buf_t;
-
-typedef struct
-{
-    size_t size;
-    struct whisper_message buf[BUF_SIZE];
-} received_cb_buf_t;
-
-typedef struct 
-{
-    size_t size;
-    uint8_t buf[BUF_SIZE];
-} delivery_cb_buf_t;
-
-extern received_cb_buf_t _mock_received_cb_buf;
-extern delivery_cb_buf_t _mock_delivery_cb_buf;
-extern data_buf_t _mock_buf_send;
-extern set_delay_buf_t _mock_set_delay_invocations;
-extern size_t _mock_cancel_delay_invocations;
-
-void data_layer_driver_mock_init(void);
-
-#endif // DATA_LAYER_DRIVER_MOCK_H
+    return 0;
+}

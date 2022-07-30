@@ -30,13 +30,13 @@
  * @param len length of the buf
  * @return unsigned char 0 if successful, 1 if failed
  */
-unsigned char motoilet_whisper_message_data__received(const unsigned char *buf, unsigned int len);
+unsigned char motoilet_whisper_driver__received_cb(const unsigned char *buf, unsigned int len);
 
 
 /**
  * @brief callback for the timer set by motoilet_whisper_data__set_delay
  */
-void motoilet_whisper_data__timeout_cb(void);
+void motoilet_whisper_driver__timeout_cb(void);
 
 
 /**
@@ -45,18 +45,18 @@ void motoilet_whisper_data__timeout_cb(void);
  * @param buf data to be written to the underlying layer
  * @param len length of the buf
  */
-void motoilet_whisper_data__write(const unsigned char *buf, unsigned char len);
+void motoilet_whisper_driver__write(const unsigned char *buf, unsigned char len);
 
 /**
  * @brief set a timer that calls the function motoilet_whisper_data__timeout_cb in the specified time, should be implemented by the link layer
  * 
  * @param delay_in_ms specified time in milliseconds
  */
-void motoilet_whisper_data__set_delay(unsigned short delay_in_ms);
+void motoilet_whisper_driver__set_delay(unsigned short delay_in_ms);
 
 /**
  * @brief cancel the timer previously set by motoilet_whisper_data__set_delay, should be implmeneted by the link layer
  */
-void motoilet_whisper_data__cancel_delay(void);
+void motoilet_whisper_driver__cancel_delay(void);
 
 #endif // MOTOILET_WHISPER_DRIVER_H

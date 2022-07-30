@@ -20,61 +20,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */ 
-#include <unity.h>
-
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
-
-#include "motoilet_whisper.h"
+#include "motoilet_whisper_message.h"
 #include "motoilet_whisper_transmission_layer.h"
-#include "app_layer.h"
 
-struct {
-    size_t size;
-    struct whisper_message buf[1024];
-} _buf_send;
 
-static void _reset(void)
+inline unsigned char motoilet_whisper__send(const struct whisper_message *message)
 {
-    _buf_send.size = 0;
+    return motoilet_whisper_transmission__send(message);
 }
 
-
-void motoilet_whisper__state_sync_cb(const unsigned char *buf, unsigned char len)
+inline void motoilet_whisper_transmission__received_cb(const struct whisper_message *message)
 {
-
+    motoilet_whisper__received_cb(message);
 }
 
-unsigned char motoilet_whisper_transmission__send(const struct whisper_message *message)
+inline void motoilet_whisper_transmission__delivery_cb(unsigned char delivered)
 {
-    uint8_t *payload = malloc(MOTOILET_WHISPER_MESSAGE_PAYLOAD_LEN);
-    memcpy(payload, message->payload, MOTOILET_WHISPER_MESSAGE_PAYLOAD_LEN);
-    _buf_send.buf[_buf_send.size++] = (struct whisper_message){
-        .type = message->type,
-        .payload = payload,
-    };
-
-    return 12;
-}
-
-void test_reset(void)
-{
-    _reset();
-    motoilet_whisper__reset();
-
-    TEST_ASSERT_EQUAL(1, _buf_send.size);
-    TEST_ASSERT_EQUAL(0x13, _buf_send.buf[0].type);
-}
-
-void setUp(void) {}
-void tearDown(void) {}
-
-int main()
-{
-    UNITY_BEGIN();
-
-    RUN_TEST(test_reset);
-
-    return UNITY_END();
+    motoilet_whisper__delivery_cb(delivered);
 }

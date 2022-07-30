@@ -21,22 +21,23 @@
  * SOFTWARE.
  */ 
 #include "app_layer.h"
-#include "motoilet_whisper_data_layer.h"
+#include "motoilet_whisper_transmission_layer.h"
 #include <string.h>
 
 #define LEN_PAYLOAD 8
 
-static unsigned char payload[LEN_PAYLOAD];
 
+static unsigned char payload[LEN_PAYLOAD];
 static unsigned char _send(unsigned char type, const unsigned char buf[MOTOILET_WHISPER_MESSAGE_PAYLOAD_LEN])
 {
+    struct whisper_message msg;
+
     memcpy(payload, buf, LEN_PAYLOAD);
 
-    struct whisper_message msg = {
-        .type = type,
-        .payload = payload,
-    };
-    return motoilet_whisper_message__send(&msg);
+    msg.type = type;
+    msg.payload = payload;
+
+    return motoilet_whisper_transmission__send(&msg);
 }
 
 unsigned char motoilet_whisper__setup(const unsigned char buf[MOTOILET_WHISPER_MESSAGE_PAYLOAD_LEN])
@@ -51,12 +52,14 @@ unsigned char motoilet_whisper__report_state(const unsigned char buf[MOTOILET_WH
 
 static unsigned char _send_empty_message(unsigned type)
 {
+    struct whisper_message msg;
+ 
     memset(payload, 0, sizeof(payload));
-    struct whisper_message msg = {
-        .type = type,
-        .payload = payload,
-    };
-    return motoilet_whisper_message__send(&msg);
+
+    msg.type = type;
+    msg.payload = payload;
+
+    return motoilet_whisper_transmission__send(&msg);
 }
 
 unsigned char motoilet_whisper__pause(void)
@@ -80,7 +83,7 @@ unsigned char motoilet_whisper__reboot(void)
 }
 
 
-void motoilet_whisper_message__received_cb(struct whisper_message *message)
+void motoilet_whisper_data__received_cb(struct whisper_message *message)
 {
     switch (message->type)
     {

@@ -20,61 +20,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */ 
-#include <unity.h>
+#ifndef DRIVER_MOCK_H
+#define DRIVER_MOCK_H
 
-#include <string.h>
+#include "motoilet_whisper_driver.h"
+#include "motoilet_whisper_data_layer.h"
+
+#include <assert.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
-#include "motoilet_whisper.h"
-#include "motoilet_whisper_transmission_layer.h"
-#include "app_layer.h"
+#define BUF_SIZE 10240
 
-struct {
+typedef struct 
+{
     size_t size;
-    struct whisper_message buf[1024];
-} _buf_send;
+    uint8_t buf[BUF_SIZE]; 
+} data_buf_t;
 
-static void _reset(void)
+typedef struct
 {
-    _buf_send.size = 0;
-}
+    size_t size;
+    uint16_t buf[BUF_SIZE];
+} set_delay_buf_t;
 
 
-void motoilet_whisper__state_sync_cb(const unsigned char *buf, unsigned char len)
-{
+extern data_buf_t _mock_buf_send;
+extern set_delay_buf_t _mock_set_delay_invocations;
+extern size_t _mock_cancel_delay_invocations;
 
-}
+void data_layer_driver_mock_init(void);
 
-unsigned char motoilet_whisper_transmission__send(const struct whisper_message *message)
-{
-    uint8_t *payload = malloc(MOTOILET_WHISPER_MESSAGE_PAYLOAD_LEN);
-    memcpy(payload, message->payload, MOTOILET_WHISPER_MESSAGE_PAYLOAD_LEN);
-    _buf_send.buf[_buf_send.size++] = (struct whisper_message){
-        .type = message->type,
-        .payload = payload,
-    };
-
-    return 12;
-}
-
-void test_reset(void)
-{
-    _reset();
-    motoilet_whisper__reset();
-
-    TEST_ASSERT_EQUAL(1, _buf_send.size);
-    TEST_ASSERT_EQUAL(0x13, _buf_send.buf[0].type);
-}
-
-void setUp(void) {}
-void tearDown(void) {}
-
-int main()
-{
-    UNITY_BEGIN();
-
-    RUN_TEST(test_reset);
-
-    return UNITY_END();
-}
+#endif // DRIVER_MOCK_H

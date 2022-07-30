@@ -23,35 +23,47 @@
 #include <unity.h>
 #include "crc.h"
 #include "data_layer.c"
-#include "data_layer.h"
 #include "motoilet_whisper_data_layer.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include "motoilet_whisper_driver.h"
-#include "data_layer_driver_mock.h"
+#include "driver_mock.h"
 #include "app_layer.h"
+
+static struct
+{
+    size_t size;
+    struct whisper_message buf[BUF_SIZE];
+} _mock_received_cb_buf;
+
+void motoilet_whisper_data__received_cb(const struct whisper_message *message)
+{
+    struct whisper_message *r = &_mock_received_cb_buf.buf[_mock_received_cb_buf.size++];
+    memcpy(r, message, sizeof(struct whisper_message));
+    uint8_t *payload = malloc(MOTOILET_WHISPER_MESSAGE_PAYLOAD_LEN);
+    r->payload = payload;
+    memcpy(payload, message->payload, MOTOILET_WHISPER_MESSAGE_PAYLOAD_LEN);
+}
 
 void test_init(void)
 {
     TEST_ASSERT_EQUAL(NULL, _buf_recv.num_matched);
     TEST_ASSERT_EQUAL(STATE_PREFIX, _state);
-    TEST_ASSERT_EQUAL(0, _buf_send.num_transmission);
-    TEST_ASSERT_EQUAL(NULL, _buf_send.payload);
-
-    data_layer_driver_mock_init();
 }
 
 void test_receive(void)
 {
     uint8_t data[] = {0xA5, WHISPER_MESSAGE_TYPE__STATE_UPDATE, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
 
+    TEST_ASSERT_EQUAL(0, _mock_received_cb_buf.size);
+
     unsigned short checksum = update_crc_buf(data, sizeof(data), CRC_INIT);
-    motoilet_whisper_message_data__received(data, sizeof(data));
-    motoilet_whisper_message_data__received((uint8_t *)&checksum, sizeof(checksum));
+    motoilet_whisper_driver__received_cb(data, sizeof(data));
+    motoilet_whisper_driver__received_cb((uint8_t *)&checksum, sizeof(checksum));
 
     TEST_ASSERT_EQUAL(1, _mock_received_cb_buf.size);
-    TEST_ASSERT_EQUAL(12, _mock_buf_send.size);
-    TEST_ASSERT_EQUAL(WHISPER_MESSAGE_TYPE__ACK, _mock_buf_send.buf[2]);
+    TEST_ASSERT_EQUAL(WHISPER_MESSAGE_TYPE__STATE_UPDATE, _mock_received_cb_buf.buf[0].type);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(&data[2], _mock_received_cb_buf.buf[0].payload, MOTOILET_WHISPER_MESSAGE_PAYLOAD_LEN);
 }
 
 void test_send(void)
@@ -75,7 +87,7 @@ void test_send(void)
 
 
     _mock_buf_send.size = 0;
-    motoilet_whisper_message__send(&msg);
+    motoilet_whisper_data__send(&msg);
 
     TEST_ASSERT_EQUAL(12, _mock_buf_send.size);
     TEST_ASSERT_EQUAL(0xA5, _mock_buf_send.buf[0]);
@@ -84,55 +96,22 @@ void test_send(void)
     TEST_ASSERT_EQUAL_UINT8_ARRAY((uint8_t *)&checksum, &_mock_buf_send.buf[10], 2);
 }
 
-void test_on_ack(void)
-{
-    uint8_t payload[] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
-    struct whisper_message msg = {0};
-    _buf_send.payload = payload;
-    _buf_send.num_transmission = 1;
-    _mock_cancel_delay_invocations = 0;
-
-    motoilet_whisper_message_data__received(ACK_MESSAGE, sizeof(ACK_MESSAGE));
-    TEST_ASSERT_EQUAL(NULL, _buf_send.payload);
-    TEST_ASSERT_EQUAL(0, _buf_send.num_transmission);
-    TEST_ASSERT_EQUAL(1, _mock_cancel_delay_invocations);
-}
-
-void test_retransmission(void)
-{
-    data_layer_driver_mock_init();
-    uint8_t buf[8] = {0};
-    struct whisper_message msg = {.type=0x02, .payload = buf};
-
-    motoilet_whisper_message__send(&msg);
-    TEST_ASSERT_EQUAL(1, _mock_set_delay_invocations.size);
-    TEST_ASSERT_EQUAL(RETRANSMISSION_DELAY, _mock_set_delay_invocations.buf[0]);
-    TEST_ASSERT_EQUAL(0, _mock_cancel_delay_invocations);
-    TEST_ASSERT_EQUAL(0, _mock_delivery_cb_buf.size);
-
-    int i = 0;
-    for(i = 0; i < RETRANSMISSION_MAX; i++)
-    {
-        motoilet_whisper_data__timeout_cb();
-        TEST_ASSERT_EQUAL(i + 2, _mock_set_delay_invocations.size);
-        TEST_ASSERT_EQUAL(0, _mock_cancel_delay_invocations);
-        TEST_ASSERT_EQUAL(0, _mock_delivery_cb_buf.size);
-    }
-
-    motoilet_whisper_data__timeout_cb();
-    TEST_ASSERT_EQUAL(1, _mock_delivery_cb_buf.size);
-    TEST_ASSERT_EQUAL(MOTOILET_WHISPER_MESSAGE_DELIVERY_FAILED, _mock_delivery_cb_buf.buf[0]);
-
-    _mock_buf_send.size = 0;
-    motoilet_whisper_data__timeout_cb();
-    TEST_ASSERT_EQUAL(0, _mock_buf_send.size);
-}
-
 void setUp(void)
 {
-    motoilet_whisper_message__data_init();
+    motoilet_whisper_data__init();
+
+    data_layer_driver_mock_init();
+    _mock_received_cb_buf.size = 0;
 }
-void tearDown(void) {}
+
+void tearDown(void) {
+    size_t i = 0;
+    for(i = 0; i < _mock_received_cb_buf.size; i++)
+    {
+        free((void *)_mock_received_cb_buf.buf[i].payload);
+    }
+    _mock_received_cb_buf.size = 0;
+}
 
 
 int main()
@@ -142,8 +121,6 @@ int main()
     RUN_TEST(test_init);
     RUN_TEST(test_receive);
     RUN_TEST(test_send);
-    RUN_TEST(test_on_ack);
-    RUN_TEST(test_retransmission);
 
     return UNITY_END();
 }

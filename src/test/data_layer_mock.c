@@ -20,61 +20,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */ 
-#include <unity.h>
+#include "data_layer_mock.h"
 
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
+_mock_send_buf_t _mock_send_buf;
 
-#include "motoilet_whisper.h"
-#include "motoilet_whisper_transmission_layer.h"
-#include "app_layer.h"
-
-struct {
-    size_t size;
-    struct whisper_message buf[1024];
-} _buf_send;
-
-static void _reset(void)
+unsigned char motoilet_whisper_data__init(void)
 {
-    _buf_send.size = 0;
+    _mock_send_buf.size = 0;
+    return 0;
 }
 
-
-void motoilet_whisper__state_sync_cb(const unsigned char *buf, unsigned char len)
+void mock_data_layer_teardown(void)
 {
-
+    int i = 0;
+    for(i = 0; i < _mock_send_buf.size; i++)
+    {
+        free((void *)_mock_send_buf.buf[i].payload);
+    }
+    _mock_send_buf.size = 0;
 }
 
-unsigned char motoilet_whisper_transmission__send(const struct whisper_message *message)
+/**
+ * @brief send out a whisper message.
+ *
+ * @param message the message to send.
+ * @return unsigned char 0 if successful, 1 if the previous message is still under processing.
+ */
+unsigned char motoilet_whisper_data__send(const struct whisper_message *message)
 {
     uint8_t *payload = malloc(MOTOILET_WHISPER_MESSAGE_PAYLOAD_LEN);
     memcpy(payload, message->payload, MOTOILET_WHISPER_MESSAGE_PAYLOAD_LEN);
-    _buf_send.buf[_buf_send.size++] = (struct whisper_message){
-        .type = message->type,
-        .payload = payload,
-    };
 
-    return 12;
-}
+    struct whisper_message *slot = &_mock_send_buf.buf[_mock_send_buf.size++];
+    memcpy(slot, message, sizeof(struct whisper_message));
+    slot->payload = payload;
 
-void test_reset(void)
-{
-    _reset();
-    motoilet_whisper__reset();
-
-    TEST_ASSERT_EQUAL(1, _buf_send.size);
-    TEST_ASSERT_EQUAL(0x13, _buf_send.buf[0].type);
-}
-
-void setUp(void) {}
-void tearDown(void) {}
-
-int main()
-{
-    UNITY_BEGIN();
-
-    RUN_TEST(test_reset);
-
-    return UNITY_END();
+    return 0;
 }

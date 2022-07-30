@@ -24,6 +24,8 @@
 #define MOTOILET_WHISPER_H
 
 #define MOTOILET_WHISPER_MESSAGE_PAYLOAD_LEN 8
+#include "motoilet_whisper_message.h"
+
 
 unsigned char motoilet_whisper__setup(const unsigned char buf[MOTOILET_WHISPER_MESSAGE_PAYLOAD_LEN]);
 
@@ -35,5 +37,12 @@ unsigned char motoilet_whisper__reset(void);
 unsigned char motoilet_whisper__reboot(void);
 
 void motoilet_whisper__state_sync_cb(const unsigned char *buf, unsigned char len);
+
+/**
+ * @brief Intialize the motoilet whisper component and its underlying components.
+ * 
+ * @return char 0 if successful, 1 otherwise.
+ */
+unsigned char motoilet_whisper__init(void);
 
 #endif // MOTOILET_WHISPER_H

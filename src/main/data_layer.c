@@ -20,13 +20,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */ 
-#include "data_layer.h"
-#include <string.h>
 #include "motoilet_whisper_data_layer.h"
+#include <string.h>
 #include "motoilet_whisper_driver.h"
 #include "byte_order.h"
 
 #include "crc.h"
+
+const static unsigned char WHISPER_MESSAGE_PREFIX[] = {0xA5};
 
 unsigned char _state, _next_state;
 #define STATE_PREFIX 0x01
@@ -39,11 +40,6 @@ unsigned char _state, _next_state;
 #define LEN_PAYLOAD 8
 #define LEN_CHECKSUM 2
 
-#define RETRANSMISSION_DELAY 50
-#define RETRANSMISSION_MAX 3
-
-const unsigned char ACK_MESSAGE[] = {0xA5, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x66, 0x95};
-
 struct
 {
     unsigned char num_matched;
@@ -51,86 +47,44 @@ struct
     unsigned char payload[LEN_PAYLOAD];
 } _buf_recv;
 
-struct
-{
-    unsigned char num_transmission;
-    unsigned char type;
-    const unsigned char *payload;
-} _buf_send;
-
-unsigned char motoilet_whisper_message__data_init(void)
+unsigned char motoilet_whisper_data__init(void)
 {
     _state = STATE_PREFIX;
     _next_state = STATE_PREFIX;
 
     _buf_recv.num_matched = 0;
 
-    // setup send buffer
-    _buf_send.num_transmission = 0;
-    _buf_send.payload = NULL;
-
     return 0;
 }
 
 unsigned short _write(const unsigned char *buf, unsigned char len, unsigned short crc)
 {
-    motoilet_whisper_data__write(buf, len);
+    motoilet_whisper_driver__write(buf, len);
     return update_crc_buf(buf, len, crc);
 }
 
-void _send(void)
+unsigned char motoilet_whisper_data__send(const struct whisper_message *message)
 {
-    // only processed if there is a message to send
-    if (_buf_send.payload == NULL)
-        return;
-
-    // check if we reached the maximum number of retransmissions
-    // the 1 is for the first attempt
-    if (_buf_send.num_transmission >= RETRANSMISSION_MAX + 1)
-    {
-        // report frame loss
-        motoilet_whisper_message__delivery_cb(MOTOILET_WHISPER_MESSAGE_DELIVERY_FAILED);
-
-        // reset and return
-        _buf_send.payload = NULL;
-        _buf_send.num_transmission = 0;
-        return;
-    }
 
     unsigned char len = 0;
+    unsigned checksum = 0;
 
     // prefix
-    unsigned checksum = _write(WHISPER_MESSAGE_PREFIX, LEN_PREFIX, CRC_INIT);
+    checksum = _write(WHISPER_MESSAGE_PREFIX, LEN_PREFIX, CRC_INIT);
     len += LEN_PREFIX;
 
     // header
-    checksum = _write(&_buf_send.type, LEN_HEADER, checksum);
+    checksum = _write(&message->type, LEN_HEADER, checksum);
     len += LEN_HEADER;
 
     // payload
-    checksum = _write(_buf_send.payload, LEN_PAYLOAD, checksum);
+    checksum = _write(message->payload, LEN_PAYLOAD, checksum);
     len += LEN_PAYLOAD;
 
     // checksum
     checksum = htons(checksum);
     _write((unsigned char *)&checksum, LEN_CHECKSUM, checksum);
-    len += LEN_CHECKSUM;
 
-    ++(_buf_send.num_transmission);
-    motoilet_whisper_data__set_delay(RETRANSMISSION_DELAY);
-}
-
-unsigned char motoilet_whisper_message__send(struct whisper_message *message)
-{
-    if (_buf_send.payload != NULL)
-        return 1;
-
-    // setup send buffer
-    _buf_send.payload = message->payload;
-    _buf_send.type = message->type;
-    _buf_send.num_transmission = 0;
-
-    _send();
     return 0;
 }
 
@@ -139,7 +93,7 @@ unsigned char _on_header(const unsigned char *buf, unsigned char len);
 unsigned char _on_payload(const unsigned char *buf, unsigned char len);
 unsigned char _on_checksum(const unsigned char *buf, unsigned char len);
 
-unsigned char motoilet_whisper_message_data__received(const unsigned char *buf, unsigned int len)
+unsigned char motoilet_whisper_driver__received_cb(const unsigned char *buf, unsigned int len)
 {
     unsigned char num_consumed = 0;
     while (len > 0)
@@ -227,12 +181,10 @@ unsigned char _on_payload(const unsigned char *buf, unsigned char len)
     return bytes_to_copy;
 }
 
-void _on_ack(void);
-void _ack(void);
-
 unsigned char _on_checksum(const unsigned char *buf, unsigned char len)
 {
-    static unsigned short checksum = 0;
+    static unsigned short checksum = 0, actual_checksum = 0;
+    struct whisper_message msg;
 
     if (_buf_recv.num_matched == 0)
     {
@@ -251,53 +203,18 @@ unsigned char _on_checksum(const unsigned char *buf, unsigned char len)
         _next_state = STATE_PREFIX;
 
         // calcute the checksum of the buffered data
-        unsigned short actual_checksum = update_crc_buf(WHISPER_MESSAGE_PREFIX, LEN_PREFIX, CRC_INIT);
+        actual_checksum = update_crc_buf(WHISPER_MESSAGE_PREFIX, LEN_PREFIX, CRC_INIT);
         actual_checksum = update_crc(_buf_recv.type, actual_checksum);
         actual_checksum = update_crc_buf(_buf_recv.payload, LEN_PAYLOAD, actual_checksum);
 
         // check if the checksums are matching
         if (actual_checksum == checksum)
         {
-            if (_buf_recv.type == 0x00)
-            {
-                // acknowledgement received
-                _on_ack();
-            }
-            else
-            {
-                // report the message and send an acknowledgement
-                struct whisper_message msg = {.type = _buf_recv.type, .payload = _buf_recv.payload};
-                motoilet_whisper_message__received_cb(&msg);
-                _ack();
-            }
+            // report the received message to the upper layer
+            msg.type = _buf_recv.type; 
+            msg.payload = _buf_recv.payload;
+            motoilet_whisper_data__received_cb(&msg);
         }
     }
     return 1;
-}
-
-void _on_ack(void)
-{
-    // only processed if there is a message to be sent
-    if (_buf_send.payload == NULL)
-        return;
-
-    // cancel the retransmission timer
-    motoilet_whisper_data__cancel_delay();
-    // report the delivery of the message
-    motoilet_whisper_message__delivery_cb(MOTOILET_WHISPER_MESSAGE_DELIVERY_SUCCESS);
-
-    _buf_send.payload = NULL;
-    _buf_send.num_transmission = 0;
-}
-
-void _ack(void)
-{
-    // just send back the acknowledgement data frame
-    motoilet_whisper_data__write(ACK_MESSAGE, sizeof(ACK_MESSAGE));
-}
-
-void motoilet_whisper_data__timeout_cb(void)
-{
-    // delegate to the retransmission routine 
-    _send();
 }
