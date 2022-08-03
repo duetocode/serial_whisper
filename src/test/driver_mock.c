@@ -63,3 +63,9 @@ void motoilet_whisper_driver__cancel_delay(void)
 {
     ++_mock_cancel_delay_invocations;
 }
+
+void motoilet_whisper_driver__send_mutex_acquire(void)
+{}
+
+void motoilet_whisper_driver__send_mutex_release(void)
+{}

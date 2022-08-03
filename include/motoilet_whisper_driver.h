@@ -59,4 +59,11 @@ void motoilet_whisper_driver__set_delay(unsigned short delay_in_ms);
  */
 void motoilet_whisper_driver__cancel_delay(void);
 
+
+/** acquire mutex for the link layer, should be implemented by the link layer */
+void motoilet_whisper_driver__send_mutex_acquire(void);
+
+/** release mutex for the link layer, should be implemented by the link layer */
+void motoilet_whisper_driver__send_mutex_release(void);
+
 #endif // MOTOILET_WHISPER_DRIVER_H

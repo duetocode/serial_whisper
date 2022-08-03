@@ -65,6 +65,7 @@ unsigned short _write(const unsigned char *buf, unsigned char len, unsigned shor
 
 unsigned char motoilet_whisper_data__send(const struct whisper_message *message)
 {
+    motoilet_whisper_driver__send_mutex_acquire();
 
     unsigned char len = 0;
     unsigned checksum = 0;
@@ -85,6 +86,7 @@ unsigned char motoilet_whisper_data__send(const struct whisper_message *message)
     checksum = htons(checksum);
     _write((unsigned char *)&checksum, LEN_CHECKSUM, checksum);
 
+    motoilet_whisper_driver__send_mutex_release();
     return 0;
 }
 
