@@ -36,14 +36,18 @@ const unsigned char EMPTY_PAYLOAD[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 static struct
 {
     unsigned char num_transmission;
-    const struct whisper_message *payload;
+    struct whisper_message *payload;
 } _buf_send;
+
+static void _buf_send_reset(void)
+{
+    _buf_send.payload = NULL;
+    _buf_send.num_transmission = 0;
+}
 
 unsigned char motoilet_whisper_transmission__init(void)
 {
-    _buf_send.num_transmission = 0;
-    _buf_send.payload = NULL;
-
+    _buf_send_reset();
     return 0;
 }
 
@@ -58,11 +62,10 @@ static void _send(void)
     if (_buf_send.num_transmission >= RETRANSMISSION_MAX + 1)
     {
         // report frame loss
-        motoilet_whisper_transmission__delivery_cb(MOTOILET_WHISPER_MESSAGE_DELIVERY_FAILED);
+        motoilet_whisper_transmission__delivery_cb(MOTOILET_WHISPER_MESSAGE_DELIVERY_FAILED, _buf_send.payload);
 
         // reset and return
-        _buf_send.payload = NULL;
-        _buf_send.num_transmission = 0;
+        _buf_send_reset();
         return;
     }
 
@@ -74,7 +77,7 @@ static void _send(void)
     motoilet_whisper_driver__set_delay(RETRANSMISSION_DELAY);
 }
 
-unsigned char motoilet_whisper_transmission__send(const struct whisper_message *message)
+unsigned char motoilet_whisper_transmission__send(struct whisper_message *message)
 {
     if (_buf_send.payload != NULL)
         return 1;
@@ -114,10 +117,9 @@ static void _on_ack(void)
     // cancel the retransmission timer to stop further retransmission attempts
     motoilet_whisper_driver__cancel_delay();
     // report the delivery of the message
-    motoilet_whisper_transmission__delivery_cb(MOTOILET_WHISPER_MESSAGE_DELIVERY_SUCCESS);
+    motoilet_whisper_transmission__delivery_cb(MOTOILET_WHISPER_MESSAGE_DELIVERY_SUCCESS, _buf_send.payload);
 
-    _buf_send.payload = NULL;
-    _buf_send.num_transmission = 0;
+    _buf_send_reset();
 }
 
 static void _ack(void)

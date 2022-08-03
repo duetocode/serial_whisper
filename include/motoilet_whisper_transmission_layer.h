@@ -33,14 +33,14 @@ unsigned char motoilet_whisper_transmission__init(void);
  * @param message the message to send.
  * @return unsigned char 0 if successful, 1 if the previous message is still under processing.
  */
-unsigned char motoilet_whisper_transmission__send(const struct whisper_message *message);
+unsigned char motoilet_whisper_transmission__send(struct whisper_message *message);
 
 /**
  * @brief delivery report for the sent message
  *
  * @param delivered 0 if the message was successfully delivered, 1 otherwise.
  */
-void motoilet_whisper_transmission__delivery_cb(unsigned char delivered);
+void motoilet_whisper_transmission__delivery_cb(unsigned char delivered, struct whisper_message *message);
 
 /**
  * @brief callback for message received from the other end

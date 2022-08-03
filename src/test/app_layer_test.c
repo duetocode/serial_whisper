@@ -46,7 +46,7 @@ void motoilet_whisper__state_sync_cb(const unsigned char *buf, unsigned char len
 
 }
 
-unsigned char motoilet_whisper_transmission__send(const struct whisper_message *message)
+unsigned char motoilet_whisper_transmission__send(struct whisper_message *message)
 {
     uint8_t *payload = malloc(MOTOILET_WHISPER_MESSAGE_PAYLOAD_LEN);
     memcpy(payload, message->payload, MOTOILET_WHISPER_MESSAGE_PAYLOAD_LEN);

@@ -24,17 +24,17 @@
 #include "motoilet_whisper_transmission_layer.h"
 
 
-inline unsigned char motoilet_whisper__send(const struct whisper_message *message)
+unsigned char motoilet_whisper__send(struct whisper_message *message)
 {
     return motoilet_whisper_transmission__send(message);
 }
 
-inline void motoilet_whisper_transmission__received_cb(const struct whisper_message *message)
+void motoilet_whisper_transmission__received_cb(const struct whisper_message *message)
 {
     motoilet_whisper__received_cb(message);
 }
 
-inline void motoilet_whisper_transmission__delivery_cb(unsigned char delivered)
+void motoilet_whisper_transmission__delivery_cb(unsigned char delivered, struct whisper_message *message)
 {
-    motoilet_whisper__delivery_cb(delivered);
+    motoilet_whisper__delivery_cb(delivered, message);
 }

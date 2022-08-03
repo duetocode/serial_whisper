@@ -29,7 +29,7 @@
 #include "driver_mock.h"
 
 static struct whisper_message sample;
-static uint8_t payload[] = {0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00};
+static const uint8_t PAYLOAD[] = {0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00};
 
 static struct {
     size_t size;
@@ -46,6 +46,8 @@ void setUp(void)
 {
     _delivery_cb_buf.size = 0;
     _received_cb_buf.size = 0;
+    sample.payload = malloc(sizeof(PAYLOAD));
+    memcpy(sample.payload, PAYLOAD, sizeof(PAYLOAD));
 
     motoilet_whisper_data__init();
     data_layer_driver_mock_init();
@@ -57,7 +59,7 @@ void motoilet_whisper_transmission__received_cb(const struct whisper_message *ms
     memcpy(&_received_cb_buf.buf[_received_cb_buf.size++], msg, sizeof(struct whisper_message));
 }
 
-void motoilet_whisper_transmission__delivery_cb(unsigned char delivered)
+void motoilet_whisper_transmission__delivery_cb(unsigned char delivered, struct whisper_message *msg)
 {
     _delivery_cb_buf.buf[_delivery_cb_buf.size++] = delivered;
 }
@@ -73,11 +75,11 @@ void test_send(void)
     motoilet_whisper_transmission__send(&sample);
     TEST_ASSERT_EQUAL(1, _mock_send_buf.size);
     TEST_ASSERT_EQUAL(sample.type, _mock_send_buf.buf[0].type);
-    TEST_ASSERT_EQUAL_UINT8_ARRAY(sample.payload, _mock_send_buf.buf[0].payload, sizeof(payload));
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(sample.payload, _mock_send_buf.buf[0].payload, sizeof(PAYLOAD));
 
     TEST_ASSERT_EQUAL(1, _buf_send.num_transmission);
     TEST_ASSERT_EQUAL(sample.type, _buf_send.payload->type);
-    TEST_ASSERT_EQUAL_UINT8_ARRAY(sample.payload, _buf_send.payload->payload, sizeof(payload));
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(sample.payload, _buf_send.payload->payload, sizeof(PAYLOAD));
     TEST_ASSERT_EQUAL(1, _mock_set_delay_invocations.size);
     TEST_ASSERT_EQUAL(RETRANSMISSION_DELAY, _mock_set_delay_invocations.buf[0]);
     TEST_ASSERT_EQUAL(0, _mock_cancel_delay_invocations);
@@ -90,7 +92,6 @@ void test_receive(void)
     TEST_ASSERT_EQUAL(1, _received_cb_buf.size);
     TEST_ASSERT_EQUAL(sample.type, _received_cb_buf.buf[0].type);
 }
-
 
 void test_retransmission(void)
 {
@@ -141,7 +142,8 @@ void tearDown(void)
 {
     mock_data_layer_teardown();
     sample.type = 0x01;
-    sample.payload = payload;
+    if (sample.payload != NULL)
+        free(sample.payload);
 }
 
 int main(void)

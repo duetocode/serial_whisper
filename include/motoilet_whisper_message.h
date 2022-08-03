@@ -37,7 +37,7 @@ struct whisper_message
  * @param message the message to be sent
  * @return unsigned char 0 if successful, 1 otherwise.
  */
-unsigned char motoilet_whisper__send(const struct whisper_message *message);
+unsigned char motoilet_whisper__send(struct whisper_message *message);
 
 void motoilet_whisper__received_cb(const struct whisper_message *message);
 
@@ -45,8 +45,9 @@ void motoilet_whisper__received_cb(const struct whisper_message *message);
  * @brief delivery report for the sent message
  *
  * @param delivered 0 if the message was successfully delivered, 1 otherwise.
+ * @param message the message struct that was passed to motoilet_whisper__send.
  */
-void motoilet_whisper__delivery_cb(unsigned char delivered);
+void motoilet_whisper__delivery_cb(unsigned char delivered, struct whisper_message *message);
 #define MOTOILET_WHISPER_MESSAGE_DELIVERY_SUCCESS 0
 #define MOTOILET_WHISPER_MESSAGE_DELIVERY_FAILED 1
 
