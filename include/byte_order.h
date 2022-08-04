@@ -29,8 +29,8 @@
 
 #ifdef __BYTE_ORDER__
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define htons(x) (((x) >> 8) | ((x) << 8))
-#define ntohs(x) (((x) >> 8) | ((x) << 8))
+#define htons(x) __builtin_bswap16(x)
+#define ntohs(x) __builtin_bswap16(x)
 #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define htons(x) (x)
 #define ntohs(x) (x)
